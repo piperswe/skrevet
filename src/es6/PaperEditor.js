@@ -263,7 +263,7 @@ export default class PaperEditor extends React.Component {
           <TextField
             value={this.state.email}
             floatingLabelText="E-Mail Address"
-            onChange={() => this.setState({ email: event.target.value })}
+            onChange={event => this.setState({ email: event.target.value })}
             errorText={!this.state.email && 'Required'}
             fullWidth
           />
