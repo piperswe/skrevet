@@ -6,6 +6,8 @@ import slugify from 'slugify';
 // eslint-disable-next-line
 const { stateToHTML } = draftJSExportHTML.__moduleExports;
 
+const style = '<style>p{line-height:200%;}</style>';
+
 JSPDF.API.centeredText = function centeredText(x, y, txt) {
   const fontSize = this.internal.getFontSize();
   const pageWidth = this.internal.pageSize.width;
@@ -26,7 +28,7 @@ export default function (contentState, details) {
   doc.setFontSize(12);
   doc.text(72, 72 + (0 * 2 * 12), `${details.lastname}, ${details.firstname}\n${details.instructor}\n${details.course}\n${moment().format('DD MMMM YYYY')}`);
   doc.centeredText(72, 72 + (4 * 2 * 12), details.title);
-  doc.fromHTML(stateToHTML(contentState), 72, 72 + (4 * 2 * 12), {
+  doc.fromHTML(style + stateToHTML(contentState), 72, 72 + (4 * 2 * 12), {
     width: 468,
     elementHandlers: {
       '#editor': () => true,

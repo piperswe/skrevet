@@ -10,9 +10,16 @@ import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
 import IconMenu from 'material-ui/IconMenu';
 import MenuItem from 'material-ui/MenuItem';
 import Dialog from 'material-ui/Dialog';
+import FloatingActionButton from 'material-ui/FloatingActionButton';
+import ContentAdd from 'material-ui/svg-icons/content/add';
+import Immutable from 'immutable';
+import fetches from './fetch';
 import exportPDF from './export';
 
-const { Editor, EditorState, RichUtils, convertToRaw, convertFromRaw } = draft;
+const { fetch } = fetches;
+
+const { Editor, EditorState, RichUtils, Entity, Modifier, convertToRaw, convertFromRaw } = draft;
+const { List, Map } = Immutable;
 
 export default class PaperEditor extends React.Component {
   constructor(props) {
@@ -24,18 +31,22 @@ export default class PaperEditor extends React.Component {
       instructor: '',
       course: '',
       title: '',
+      wc_doi: '',
+      citationOpen: false,
+      citations: List.of(),
       editOpen: true,
       editorState: EditorState.createEmpty(),
     };
     if (!localStorage.getItem('_')) localStorage.setItem('_', '[]');
     const existingStateKeys = JSON.parse(localStorage.getItem('_'));
     existingStateKeys.forEach((key) => {
+      const content = JSON.parse(localStorage.getItem(key));
       if (key === 'editorState') {
         this.state[key] = EditorState.createWithContent(
-          convertFromRaw(JSON.parse(localStorage.getItem(key))),
+          convertFromRaw(content),
         );
       } else {
-        this.state[key] = JSON.parse(localStorage.getItem(key));
+        this.state[key] = Immutable.fromJS(content);
       }
     });
     this.onChange = this.onChange.bind(this);
@@ -48,6 +59,10 @@ export default class PaperEditor extends React.Component {
           const newState = update[x];
           const content = newState.getCurrentContent();
           localStorage.setItem(x, JSON.stringify(convertToRaw(content)));
+        } else if (update[x] instanceof List) {
+          localStorage.setItem(x, JSON.stringify(update[x].toArray()));
+        } else if (update[x] instanceof Map) {
+          localStorage.setItem(x, JSON.stringify(update[x].toObject()));
         } else {
           localStorage.setItem(x, JSON.stringify(update[x]));
         }
@@ -167,6 +182,55 @@ export default class PaperEditor extends React.Component {
             errorText={!this.state.title && 'Required'}
             fullWidth
           />
+        </Dialog>
+        <FloatingActionButton style={{ position: 'absolute', right: '25px', bottom: '25px' }} onClick={() => this.setState({ citationOpen: true })}>
+          <ContentAdd />
+        </FloatingActionButton>
+        <Dialog
+          title="Add Citation"
+          actions={[
+            <FlatButton
+              label="OK"
+              primary
+              disabled={!this.state.wc_title || !this.state.wc_doi}
+              onTouchTap={() => (async function addCitation() {
+                this.setState({ citationOpen: false });
+                const citation = (await (await fetch(`http://api.crossref.org/works/${this.state.wc_doi}`)).json()).message;
+                console.log(`${citation.author[0].family}, ${citation.author[0].given}. ${citation.title[0]} ${citation['container-title'][0]}, vol. ${citation.volume}, issue ${citation.issue}, ${citation.created['date-parts'][0][0]}, page(s) ${citation.page}`);
+                const entity = Entity.create('MENTION', 'IMMUTABLE', citation);
+                this.setState({
+                  editorState: EditorState.push(
+                    this.state.editorState,
+                    Modifier.applyEntity(
+                      this.state.editorState.getCurrentContent(),
+                      this.state.editorState.getSelection(),
+                      entity,
+                    ),
+                  ),
+                  citations: this.state.citations.push(citation),
+                  wc_doi: '',
+                });
+              }).bind(this)()}
+            />,
+          ]}
+          open={this.state.citationOpen}
+        >
+          <TextField
+            value={this.state.wc_doi}
+            floatingLabelText="DOI"
+            onChange={event => (async function update() {
+              this.setState({ wc_doi: event.target.value });
+              try {
+                const citation = (await (await fetch(`http://api.crossref.org/works/${event.target.value}`)).json()).message;
+                this.setState({ wc_title: citation.title[0] });
+              } catch (e) {
+                this.setState({ wc_title: '' });
+              }
+            }).bind(this)()}
+            errorText={(!this.state.wc_title || !this.state.wc_doi) && 'Not found'}
+            fullWidth
+          />
+          <span>{this.state.wc_title}</span>
         </Dialog>
       </div>
     </MuiThemeProvider>);
