@@ -32,9 +32,11 @@ export default class PaperEditor extends React.Component {
       course: '',
       title: '',
       wc_doi: '',
+      email: '',
       citationOpen: false,
       citations: List.of(),
       editOpen: true,
+      emailOpen: false,
       editorState: EditorState.createEmpty(),
     };
     if (!localStorage.getItem('_')) localStorage.setItem('_', '[]');
@@ -98,6 +100,7 @@ export default class PaperEditor extends React.Component {
       instructor: this.state.instructor,
       course: this.state.course,
       title: this.state.title,
+      citations: this.state.citations,
     });
   }
 
@@ -127,6 +130,15 @@ export default class PaperEditor extends React.Component {
                   title: '',
                   editorState: EditorState.createEmpty(),
                   editOpen: true,
+                });
+              }}
+            />
+            <MenuItem
+              primaryText="Get Reminded" onClick={() => {
+                localStorage.setItem('_', '[]');
+                this.setState({
+                  email: '',
+                  emailOpen: true,
                 });
               }}
             />
@@ -207,8 +219,9 @@ export default class PaperEditor extends React.Component {
                       entity,
                     ),
                   ),
-                  citations: this.state.citations.push(citation),
+                  citations: this.state.citations.push(Immutable.fromJS(citation)),
                   wc_doi: '',
+                  wc_title: '',
                 });
               }).bind(this)()}
             />,
@@ -222,7 +235,7 @@ export default class PaperEditor extends React.Component {
               this.setState({ wc_doi: event.target.value });
               try {
                 const citation = (await (await fetch(`http://api.crossref.org/works/${event.target.value}`)).json()).message;
-                this.setState({ wc_title: citation.title[0] });
+                this.setState({ wc_title: `"${citation.title[0]}" by ${citation.author[0].given} ${citation.author[0].family} in ${citation['container-title'][0]}` });
               } catch (e) {
                 this.setState({ wc_title: '' });
               }
@@ -231,6 +244,29 @@ export default class PaperEditor extends React.Component {
             fullWidth
           />
           <span>{this.state.wc_title}</span>
+        </Dialog>
+        <Dialog
+          title="Get Reminders"
+          actions={[
+            <FlatButton
+              label="OK"
+              primary
+              disabled={!this.state.wc_title || !this.state.wc_doi}
+              onTouchTap={() => (async function addCitation() {
+                this.setState({ emailOpen: false });
+                await (await fetch(`http://54.235.226.255:3000/${this.state.email}`)).text();
+              }).bind(this)()}
+            />,
+          ]}
+          open={this.state.emailOpen}
+        >
+          <TextField
+            value={this.state.email}
+            floatingLabelText="E-Mail Address"
+            onChange={() => this.setState({ email: event.target.value })}
+            errorText={!this.state.email && 'Required'}
+            fullWidth
+          />
         </Dialog>
       </div>
     </MuiThemeProvider>);
