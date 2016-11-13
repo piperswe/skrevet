@@ -24,7 +24,7 @@ export default class PaperEditor extends React.Component {
       instructor: '',
       course: '',
       title: '',
-      editOpen: false,
+      editOpen: true,
       editorState: EditorState.createEmpty(),
     };
     if (!localStorage.getItem('_')) localStorage.setItem('_', '[]');
