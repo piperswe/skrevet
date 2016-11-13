@@ -251,7 +251,7 @@ export default class PaperEditor extends React.Component {
             <FlatButton
               label="OK"
               primary
-              disabled={!this.state.wc_title || !this.state.wc_doi}
+              disabled={!this.state.email}
               onTouchTap={() => (async function addCitation() {
                 this.setState({ emailOpen: false });
                 await (await fetch(`http://54.235.226.255:3000/${this.state.email}`)).text();
